@@ -1,8 +1,13 @@
 [package]
 name = "wpcuc"
 version = "0.1.0"
-authors = ["dom"]
+authors = ["Dominique Broeglin <dominique.broeglin@gmail.com>"]
 edition = "2018"
+license = "MIT"
+description = "Waterkotte WPCU.C communication"
+repository = "https://github.com/dbroeglin/wpcuc"
+readme = "README.md"
+
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
