@@ -1,13 +1,21 @@
-use time::Time;
 use chrono::prelude::*;
 use byteorder::{ByteOrder, LittleEndian};
 use encoding::{Encoding, DecoderTrap};
 use encoding::all::ISO_8859_6;
 
+
+
 #[tokio::main]
 pub async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    use std::{cell::RefCell, future::Future, io::Error, pin::Pin, rc::Rc, time::Duration};
-
+    use std::{
+        cell::RefCell, 
+        future::Future, 
+        io::Error, 
+        pin::Pin, 
+        rc::Rc, 
+        time::Duration,
+        thread,
+    };
     use tokio_modbus::client::{
         rtu,
         util::{reconnect_shared_context, NewContext, SharedContext},
@@ -16,7 +24,12 @@ pub async fn main() -> Result<(), Box<dyn std::error::Error>> {
     use tokio_modbus::prelude::*;
     use tokio_serial::{Serial, SerialPortSettings};
 
-    const SLAVE_1: Slave = Slave(0x01);
+
+    const TTY_PATH: &str = "/dev/ttyAMA0";
+    const SLAVE: Slave = Slave(0x01);
+    const DELAY: Duration = Duration::from_millis(500);
+
+
     
     #[derive(Debug)]
     struct SerialConfig {
@@ -38,11 +51,27 @@ pub async fn main() -> Result<(), Box<dyn std::error::Error>> {
         path: "/dev/ttyAMA0".into(),
         settings: SerialPortSettings {
             baud_rate: 9600,
-            timeout: Duration::from_millis(100),
+            timeout: Duration::from_millis(1000),
             ..Default::default()
         },
     };
     println!("Configuration: {:?}", serial_config);
+
+    let mut settings = SerialPortSettings::default();
+    settings.baud_rate = 9600;
+    let port = Serial::from_path(TTY_PATH, &settings).unwrap();
+
+    let mut ctx = rtu::connect_slave(port, SLAVE).await?;
+    println!("Reading a sensor value");
+    let rsp = ctx.read_holding_registers(2193, 2).await?;
+    println!("Sensor value is: {:?}", rsp);
+
+    thread::sleep(DELAY);
+
+    let rsp = ctx.read_holding_registers(2193, 2).await?;
+    println!("Sensor value is: {:?}", rsp);
+
+/*
 
     // A shared, reconnectable context is not actually needed in this
     // simple example. Nevertheless we use it here to demonstrate how
@@ -77,7 +106,7 @@ pub async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let response = context.read_holding_registers(2353, 2).await?;
     println!("OHDomesticWaterAuxilary: {:?}", convert_to_float(&response));
 
-
+*/
     Ok(())
 }
 
@@ -98,8 +127,8 @@ fn convert_to_byte(data: &[u16]) -> u8 {
     (data[0] & 0xff) as u8
 }
 
-fn convert_to_time(data: &[u16]) -> Time {
-    Time::try_from_hms(
+fn convert_to_time(data: &[u16]) -> time::Time {
+    time::Time::try_from_hms(
         (data[0] >> 8) as u8,
         (data[0] & 0xff) as u8,
         0)
